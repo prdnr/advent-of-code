@@ -125,9 +125,7 @@ Day 1 finished.
 ** Input File To String
 Advent of Code provides a small input sample for testing, and a large one for actually solving the problem.
 
-Including the larger input file along side solutions poses a couple of problems:
-- Too large to conveniently include in this org file without adding clutter.
-- People can search for solutions which used their input file to get the answer without solving.
+[[https://www.reddit.com/r/adventofcode/comments/7lesj5/comment/drlt9am/][The author of Advent Of Code has asked in the past that inputs not be shared.]]
 
 So the input file is going to be kept elsewhere.  'elsewhere' being =~/Downloads/aoc/=.
 
