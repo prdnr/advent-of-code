@@ -1,6 +1,6 @@
 #+title: 2022 Solutions
 
-ℹ The assumption is that this file is being viewed in emacs.  Github may or may not render everything properly.
+ℹ This file is best viewed in emacs.  Github's support for org-mode files is partial.  🤷
 
 * Day 1 : Calorie Counting
 [[https://adventofcode.com/2022/day/1][Link to Problem]]
