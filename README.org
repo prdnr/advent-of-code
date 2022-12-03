@@ -1,0 +1,5 @@
+#+title: Readme
+
+Probably unhelpful solutions to [[https://adventofcode.com][Advent Of Code]] written with a literate style in emacs lisp.
+
+- [[file:2022-solutions.org][Solutions for 2022]]

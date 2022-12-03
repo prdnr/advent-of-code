@@ -1,0 +1,145 @@
+#+title: 2022 Solutions
+
+ℹ The assumption is that this file is being viewed in emacs.  Github may or may not render everything properly.
+
+* Day 1 : Calorie Counting
+[[https://adventofcode.com/2022/day/1][Link to Problem]]
+The elves are laden with snacks.  They would like to know how many calories the most energy rich members of their trope are carrying.
+
+The list they have provided is formatted like this:
+#+begin_quote
+1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000
+#+end_quote
+
+
+The empty lines delimit the elves.
+** Part 1 : A Single Elf
+Take the provided sample input and plop it into a variable for testing.
+
+#+name: day1/sample-input
+#+begin_src emacs-lisp :tangle src/2022/day1.el :results silent
+(defvar day1/sample-input
+  "1000\n2000\n3000\n\n4000\n\n5000\n6000\n\n7000\n8000\n9000\n\n10000"
+  "Sample input provided by the advent of code problem.")
+#+end_src
+
+Now the task is to get that into a slightly more usable format.
+
+#+name: day1/parse-input
+#+begin_src emacs-lisp :tangle src/2022/day1.el :results silent
+(defun day1/parse-input (input)
+  "Process the INPUT string into a list of lists of numbers.
+Each list of numbers represents an elf."
+  (let ((grouped-input (mapcar #'split-string (split-string input "\n\n"))))
+    (mapcar (lambda (strings) (mapcar #'string-to-number strings)) grouped-input)))
+#+end_src
+
+This will yield a list of lists of numbers.  Here it is with the sample input:
+
+#+begin_src emacs-lisp :tangle no :results raw
+(day1/parse-input day1/sample-input)
+#+end_src
+
+#+RESULTS:
+((1000 2000 3000) (4000) (5000 6000) (7000 8000 9000) (10000))
+
+The lists could be flattened into a sum, but that's an extra step that may or may not be useful in part 2 of the problem.
+
+Easy enough to do it while we solve for what part 1 is asking for:
+
+#+name: day1/most-caloric-elf
+#+begin_src emacs-lisp :tangle src/2022/day1.el :results silent
+(require 'cl-seq)
+(defun day1/most-caloric-elf (elves)
+  "Process a list of ELVES, return the calories held by the most caloric elf."
+  (let ((reduced-elves (flatten-list (mapcar (lambda (x) (cl-reduce #'+ x)) elves))))
+    (car (sort reduced-elves #'>))))
+#+end_src
+
+And now everything is in place to solve the problem with the sample data set.
+
+#+begin_src emacs-lisp :tangle no :results verbatium
+(day1/most-caloric-elf (day1/parse-input day1/sample-input))
+#+end_src
+
+#+RESULTS:
+: 24000
+
+There is only piece missing: a way to read in the actual problem's input.  This is going to be common to all of the problems in advent of code, so here is an occasion to start building the [[Utility Library]].
+
+(See: [[Input File To String]])
+
+So the solution to the actual problem is found via:
+
+#+begin_src emacs-lisp :tangle no :noweb yes :results silent
+<<util-read-input>>
+(day1/most-caloric-elf (day1/parse-input (util/read-input "day1")))
+#+end_src
+
+** Part 2 : The Big Three
+For this part, the elves want to know the caloric total of the three most heavily laden elves.  This is nearly the same thing as in part 1.
+
+Now when the list of =reduced-elves= is sorted, take the first three and return their sum.
+
+#+begin_src emacs-lisp :tangle src/2022/day1.el :results silent
+(require 'cl-seq)
+(require 'seq)
+(defun day1/n-most-caloric-elves (n elves)
+  "Process a list of ELVES, return the calories held by the N most caloric elves."
+  (let ((reduced-elves (flatten-list (mapcar (lambda (x) (cl-reduce #'+ x)) elves))))
+    (cl-reduce #'+ (seq-take (sort reduced-elves #'>) n))))
+#+end_src
+
+So the answer for the sample input can by found like so:
+
+#+begin_src emacs-lisp :tangle no :results verbatium
+(day1/n-most-caloric-elves 3 (day1/parse-input day1/sample-input))
+#+end_src
+
+#+RESULTS:
+: 45000
+
+This function will also solve part 1 by passing in =1= for =N=.
+
+And the solution to the actual problem:
+
+#+begin_src emacs-lisp :tangle no :noweb yes :results silent
+(day1/n-most-caloric-elves 3 (day1/parse-input (util/read-input "day1")))
+#+end_src
+
+Day 1 finished.
+* Utility Library
+** Input File To String
+Advent of Code provides a small input sample for testing, and a large one for actually solving the problem.
+
+Including the larger input file along side solutions poses a couple of problems:
+- Too large to conveniently include in this org file without adding clutter.
+- People can search for solutions which used their input file to get the answer without solving.
+
+So the input file is going to be kept elsewhere.  'elsewhere' being =~/Downloads/aoc/=.
+
+#+name: util-read-input
+#+begin_src emacs-lisp :tangle src/2022/util.el :results silent
+(defun util/read-input (day)
+  "Grab the problem input for DAY from ~/Downloads/aoc and return as a string.
+DAY should be a string like \"day1\""
+  (let ((path (concat "~/Downloads/aoc/input-" day)))
+    (with-temp-buffer
+      (insert-file-contents path)
+      (buffer-string))))
+#+end_src
+
+Reading the file to a buffer and then reading the string out of that buffer seems a tad convoluted but [[https://emacs.stackexchange.com/questions/31764/single-function-to-return-file-contents-as-a-string][hey, what can ya do?]]
