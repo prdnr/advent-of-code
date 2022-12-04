@@ -71,7 +71,7 @@ Easy enough to do it while we solve for what part 1 is asking for:
 
 And now everything is in place to solve the problem with the sample data set.
 
-#+begin_src emacs-lisp :tangle no :results verbatium
+#+begin_src emacs-lisp :tangle no :results value verbatim
 (day1/most-caloric-elf (day1/parse-input day1/sample-input))
 #+end_src
 
@@ -105,7 +105,7 @@ Now when the list of =reduced-elves= is sorted, take the first three and return 
 
 So the answer for the sample input can by found like so:
 
-#+begin_src emacs-lisp :tangle no :results verbatium
+#+begin_src emacs-lisp :tangle no :results value verbatim
 (day1/n-most-caloric-elves 3 (day1/parse-input day1/sample-input))
 #+end_src
 
@@ -121,6 +121,223 @@ And the solution to the actual problem:
 #+end_src
 
 Day 1 finished.
+* Day 2 : Rock Paper Scissors
+[[https://adventofcode.com/2022/day/2][Link to Problem]]
+The elves are playing rock paper scissors and want to help you cheat.
+
+They have provided a play guide:
+#+begin_quote
+A Y
+B X
+C Z
+#+end_quote
+
+The first column is opponent moves. The second column is you.
+
+| Opponent | Move     | You |
+|----------+----------+-----|
+| A        | Rock     | X   |
+| B        | Paper    | Y   |
+| C        | Scissors | Z   |
+
+Players win by having the highest cumulative score.  A rounds score is *shape points + outcome points*.
+
+#+name: day2-shape-points-table
+| Shape    | Points |
+|----------+--------|
+| Rock     |      1 |
+| Paper    |      2 |
+| Scissors |      3 |
+
+#+name: day2-outcome-points-table
+| Outcome | Points |
+|---------+--------|
+| Win     |      6 |
+| Draw    |      3 |
+| Lose    |      0 |
+
+** Part 1 : Play Out The Guide
+What will happen with the play guide followed exactly?
+
+Put the sample guide into a test variable
+#+name: day2/sample-input
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defvar day2/sample-input "A Y\nB X\nC Z"
+  "Sample input provided by the advent of code problem.")
+#+end_src
+*** Parse The Input
+This input needs broken into a list on the new lines, and then those need mapped over so the characters become into either =:rock=, =:paper=, or =scissors=.
+
+First, the converter function.
+
+#+name: day2/code-converter
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/code-converter (str)
+  "Take STR and return :rock, :paper, or :scissor."
+  (cond ((or (string= "A" str) (string= "X" str)) :rock)
+        ((or (string= "B" str) (string= "Y" str)) :paper)
+        ((or (string= "C" str) (string= "Z" str)) :scissors)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/code-converter "A")
+#+end_src
+
+#+RESULTS:
+: :rock
+
+Parsing will take place in three steps:
+- Split the input into a list which holds the pairs of codes that represent the match.
+- Run the converter over the pairs of codes
+- Remove a trailing =nil= which will be present due to a final empty line in the input file.
+
+#+name: day2/parse-input
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/parse-input (input)
+  "Take INPUT and return lists of moves"
+  (let* ((split-strings  (mapcar #'split-string (split-string input "\n")))
+        (converted-lists (mapcar (lambda (x) (mapcar #'day2/code-converter x)) split-strings)))
+    (remove nil converted-lists)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/parse-input day2/sample-input)
+#+end_src
+
+#+RESULTS:
+: ((:rock :paper) (:paper :rock) (:scissors :scissors))
+
+This encodes the cheat guide the elves provided in an obvious format that is easy to manipulate.
+*** Who Won A Match?
+Looking at the possible outcomes...
+
+#+name: day2-game-state-table
+| Opponent | Draw     | Win     | Lose     |
+|----------+----------+---------+----------|
+| Rock     | Rock     | Paper   | Scissors |
+| Paper    | Paper    | Scissor | Rock     |
+| Scissors | Scissors | Rock    | Paper    |
+
+...if the list of possible moves is...
+
+#+begin_src emacs-lisp :tangle no :results silent
+(defvar day2/moves (list :rock :paper :scissors)
+  "Valid moves within the game.")
+#+end_src
+
+...then a draw condition is present if both the opponent and player moves have the same position in the =day2/moves= list.
+
+#+name: day2/drawp
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/drawp (opponent player)
+  "Determines if the OPPONENT and PLAYER moves are a draw."
+  (eq (position opponent day2/moves) (position player day2/moves)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/drawp :paper :paper)
+#+end_src
+
+#+RESULTS:
+: t
+
+Looking again at the [[day2-game-state-table][chart above]], a win is found by checking the player move position against the =day2/moves= rotated forward once.
+
+#+name: day2/rotate
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(require 'seq)
+(defun day2/rotate (seq)
+  "Return SEQ with it's first elment moved to the end."
+  (append (cdr seq) (seq-take seq 1)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/rotate day2/moves)
+#+end_src
+
+#+RESULTS:
+: (:paper :scissors :rock)
+
+Notice that in this rotated list, =:paper= occupies the position that =:rock= once did.  Compairing against a rotated list makes the win predicate function almost exactly the same as [[day2/drawp][the one for draws]].
+
+#+name: day2/winp
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/winp (opponent player)
+  "Determines if the OPPONENT and PLAYER moves are a PLAYER win."
+  (eq (position opponent day2/moves) (position player (day2/rotate day2/moves))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/winp :paper :scissors)
+#+end_src
+
+#+RESULTS:
+: t
+
+The lose state is implicit.
+*** Scoring A Match
+Looking at the table for [[day2-shape-points-table][points awarded by shape]], shape points are 1 + the move's position in =day2/moves=
+
+#+name: day2/shape-points
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/shape-points (move)
+  "Return the points awarded by the shape of the MOVE."
+  (1+ (position move day2/moves)))
+#+end_src
+
+And the function to determine the [[day2-outcome-points-table][points awarded by the game outcome]].
+
+#+name: day2/outcome-points
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/outcome-points (opponent player)
+  "Return the points awarded by the outcome of the moves made by OPPONENT and PLAYER."
+  (cond ((day2/winp opponent player) 6)
+        ((day2/drawp opponent player) 3)
+        (t 0)))
+#+end_src
+
+With these two done, it is time to write the function to map over the list of matches to get a score per match.
+
+#+name: day2/match-points
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/match-points (match)
+  "Return the points won by playing MATCH."
+  (let ((opponent (car match))
+        (player (cadr match)))
+    (+ (day2/outcome-points opponent player) (day2/shape-points player))))
+#+end_src
+
+The results of match of =(:rock :paper)= should be 8.
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/match-points '(:rock :paper))
+#+end_src
+
+#+RESULTS:
+: 8
+
+All the groundwork now exists to solve the problem.
+*** Scoring The Tournament
+Just parse the input into matches, score them, and sum the result.
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(require 'cl-seq)
+(reduce #'+ (mapcar #'day2/match-points (day2/parse-input day2/sample-input)))
+#+end_src
+
+#+RESULTS:
+: 15
+
+And so the solution to the actual problem is found via:
+
+#+begin_src emacs-lisp :tangle no :noweb yes :results value verbatim
+<<util-read-input>>
+(require 'cl-seq)
+(reduce #'+ (mapcar #'day2/match-points (day2/parse-input (util/read-input "day2"))))
+#+end_src
+
+#+RESULTS:
+: 13009
+
 * Utility Library
 ** Input File To String
 Advent of Code provides a small input sample for testing, and a large one for actually solving the problem.
