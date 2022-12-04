@@ -126,6 +126,7 @@ Day 1 finished.
 The elves are playing rock paper scissors and want to help you cheat.
 
 They have provided a play guide:
+#+name: day2-example-input
 #+begin_quote
 A Y
 B X
@@ -134,6 +135,7 @@ C Z
 
 The first column is opponent moves. The second column is you.
 
+#+name: day2-example-input-table
 | Opponent | Move     | You |
 |----------+----------+-----|
 | A        | Rock     | X   |
@@ -329,14 +331,128 @@ Just parse the input into matches, score them, and sum the result.
 
 And so the solution to the actual problem is found via:
 
-#+begin_src emacs-lisp :tangle no :noweb yes :results value verbatim
+#+begin_src emacs-lisp :tangle no :noweb yes :results silent
 <<util-read-input>>
 (require 'cl-seq)
 (reduce #'+ (mapcar #'day2/match-points (day2/parse-input (util/read-input "day2"))))
 #+end_src
 
+** Part 2 : Miscommunication Between Cheats
+It turns out that the [[day2-example-input-table][original understanding of the play guide]] was wrong.  What was actually meant was to indicate if the match should be won, lost, or drawn.
+
+#+name: day2-corrected-example-input-table
+| Opponent | Move     | You | Outcome |
+|----------+----------+-----+---------|
+| A        | Rock     | X   | Lose    |
+| B        | Paper    | Y   | Draw    |
+| C        | Scissors | Z   | Win     |
+
+Now what is the total score achieved in the tournament by following the guide?
+*** Parse The Input
+Like before, the input needs broken into a list on the new lines, and but now it is mapped over so the characters become into either =:rock=, =:paper=, =scissors= paired with =:lose=, =:draw=, =:win=.
+
+The corrected converter function.
+
+#+name: day2/corrected-code-converter
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/corrected-code-converter (str)
+  "Take STR and return :rock, :paper, or :scissor."
+  (cond ((string= "A" str) :rock)
+        ((string= "B" str) :paper)
+        ((string= "C" str) :scissors)
+        ((string= "X" str) :lose)
+        ((string= "Y" str) :draw)
+        ((string= "Z" str) :win)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/corrected-code-converter "X")
+#+end_src
+
 #+RESULTS:
-: 13009
+: :lose
+
+Parsing will still take place in three steps:
+- Split the input into a list which holds the pairs of codes that represent the match.
+- Run the corrected converter over the pairs of codes
+- Remove a trailing =nil= which will be present due to a final empty line in the input file.
+
+#+name: day2/corrected-parse-input
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/corrected-parse-input (input)
+  "Take INPUT and return lists of moves"
+  (let* ((split-strings  (mapcar #'split-string (split-string input "\n")))
+         (converted-lists (mapcar (lambda (x) (mapcar #'day2/corrected-code-converter x)) split-strings)))
+    (remove nil converted-lists)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/corrected-parse-input day2/sample-input)
+#+end_src
+
+#+RESULTS:
+: ((:rock :draw) (:paper :lose) (:scissors :win))
+
+The encoded cheat guide hasn't changed much on the whole.
+*** How I Won A Match?
+This corrected version of the parsed input needs one extra step before solving.  Run over it and substitute =:lose= =:draw= =:win= for the moves that yield the desired outcome.
+
+Doing this will use a similar technique to rotating the move list, which was done to [[Who Won A Match?][determine who won a match]]:
+- To draw, replace =:draw= with the shape in =day2/moves= at the same position as the opponent's move.
+- To win, do the above but with one added to the opponent's position and taking modulo three of the result.
+- To lose, do the above but with two added to the opponent's position and taking modulo three of the result.
+
+#+name: day2/move-from-guide
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/move-from-guide (match-guide)
+  "Return the moves that are indicated by the MATCH-GUIDE."
+  (let* ((opponent (car match-guide))
+         (outcome (cadr match-guide))
+         (pos (position opponent day2/moves)))
+    (cond ((eq outcome :draw) (list opponent (elt day2/moves pos)))
+          ((eq outcome :win) (list opponent (elt day2/moves (mod (+ pos 1) 3))))
+          ((eq outcome :lose) (list opponent (elt day2/moves (mod (+ pos 2) 3)))))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/move-from-guide '(:rock :lose))
+#+end_src
+
+#+RESULTS:
+: (:rock :scissors)
+
+Run this over the correctly parsed input to get back on track with part 1.
+
+#+name: day2/get-tournament-moves
+#+begin_src emacs-lisp :tangle src/2022/day2.el :results silent
+(defun day2/get-tournament-moves (match-guides)
+  "Take the MATCH-GUIDES list and return the moves to be made in the tournament."
+  (mapcar #'day2/move-from-guide match-guides))
+#+end_src
+
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(day2/get-tournament-moves (day2/corrected-parse-input day2/sample-input))
+#+end_src
+
+#+RESULTS:
+: ((:rock :rock) (:paper :rock) (:scissors :rock))
+*** Picking Up Where We Left Off
+Just parse the input into the tournament moves, score them, and sum the result.
+#+begin_src emacs-lisp :tangle no :results value verbatim
+(require 'cl-seq)
+(reduce #'+ (mapcar #'day2/match-points (day2/get-tournament-moves (day2/corrected-parse-input day2/sample-input))))
+#+end_src
+
+#+RESULTS:
+: 12
+
+And so the solution to the actual problem is found via:
+
+#+begin_src emacs-lisp :tangle no :noweb yes :results silent
+<<util-read-input>>
+(require 'cl-seq)
+(reduce #'+ (mapcar #'day2/match-points (day2/get-tournament-moves (day2/parse-input (util/read-input "day2")))))
+#+end_src
 
 * Utility Library
 ** Input File To String
