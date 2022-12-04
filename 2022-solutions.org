@@ -140,7 +140,7 @@ The first column is opponent moves. The second column is you.
 | B        | Paper    | Y   |
 | C        | Scissors | Z   |
 
-Players win by having the highest cumulative score.  A rounds score is *shape points + outcome points*.
+Players win by having the highest cumulative score.  A round's score is *shape points + outcome points*.
 
 #+name: day2-shape-points-table
 | Shape    | Points |
@@ -196,7 +196,7 @@ Parsing will take place in three steps:
 (defun day2/parse-input (input)
   "Take INPUT and return lists of moves"
   (let* ((split-strings  (mapcar #'split-string (split-string input "\n")))
-        (converted-lists (mapcar (lambda (x) (mapcar #'day2/code-converter x)) split-strings)))
+         (converted-lists (mapcar (lambda (x) (mapcar #'day2/code-converter x)) split-strings)))
     (remove nil converted-lists)))
 #+end_src
 
